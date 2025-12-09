@@ -4,14 +4,23 @@ import { authService } from '../../services/api';
 import { Link } from 'react-router-dom';
 
 const ProfilePage = () => {
-    const { user, login } = useAuth();
+    const { user, updateUser } = useAuth();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
     const [formData, setFormData] = useState({
         weight: '', height: '', age: '', gender: 'male',
         activity_level: 'moderate', dietary_goal: 'maintain',
-        allergies: []
+        allergies: [],
+        dislikes: [],
+        favorites: [],
+        bio: ''
+    });
+
+    const [inputStates, setInputStates] = useState({
+        allergy: '',
+        dislike: '',
+        favorite: ''
     });
 
     const [stats, setStats] = useState({ bmr: 0, dailyCalories: 0 });
@@ -25,7 +34,10 @@ const ProfilePage = () => {
                 gender: user.gender || 'male',
                 activity_level: user.activity_level || 'moderate',
                 dietary_goal: user.dietary_goal || 'maintain',
-                allergies: user.allergies || []
+                allergies: user.allergies || [],
+                dislikes: user.dislikes || [],
+                favorites: user.favorites || [],
+                bio: user.bio || ''
             });
         }
     }, [user]);
@@ -38,81 +50,127 @@ const ProfilePage = () => {
             } else {
                 bmr = 10 * formData.weight + 6.25 * formData.height - 5 * formData.age - 161;
             }
-
             const activityMultipliers = {
                 sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9
             };
-
             const daily = Math.round(bmr * (activityMultipliers[formData.activity_level] || 1.2));
             setStats({ bmr: Math.round(bmr), dailyCalories: daily });
         }
-    }, [formData]);
+    }, [formData.weight, formData.height, formData.age, formData.gender, formData.activity_level]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAllergyChange = (allergen) => {
+    const handleTagAction = (category, item, action) => {
         setFormData(prev => {
-            const newAllergies = prev.allergies.includes(allergen)
-                ? prev.allergies.filter(a => a !== allergen)
-                : [...prev.allergies, allergen];
-            return { ...prev, allergies: newAllergies };
+            let newList;
+            if (action === 'add') {
+                if (prev[category].includes(item)) return prev;
+                newList = [...prev[category], item];
+            } else {
+                newList = prev[category].filter(i => i !== item);
+            }
+            return { ...prev, [category]: newList };
         });
+    };
+
+    const handleInputKey = (e, category, stateKey) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const value = inputStates[stateKey].trim();
+            if (value) {
+                handleTagAction(category, value, 'add');
+                setInputStates(prev => ({ ...prev, [stateKey]: '' }));
+            }
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await authService.updateProfile(formData);
+            const updatedUserResponse = await authService.updateProfile(formData);
+            updateUser(updatedUserResponse);
             setMessage('✅ Профіль успішно оновлено!');
         } catch (error) {
+            console.error(error);
             setMessage('❌ Помилка збереження');
         } finally {
             setLoading(false);
         }
     };
 
-    const allergensList = ['nuts', 'lactose', 'gluten', 'honey', 'seafood', 'eggs'];
+    const commonAllergies = ['Горіхи', 'Лактоза', 'Глютен', 'Мед', 'Морепродукти', 'Яйця'];
+    const commonDislikes = ['Цибуля', 'Кінза', 'Гриби', 'Свинина', 'Гостре'];
+    const commonFavorites = ['Курка', 'Лосось', 'Авокадо', 'Паста', 'Шоколад'];
+
     const inputClass = "w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 transition-colors";
-    const labelClass = "block text-sm text-gray-600 dark:text-gray-400 mb-1";
+    const labelClass = "block text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium";
+
+    const TagSection = ({ title, category, options, colorClass, inputStateKey, icon }) => (
+        <div className="mb-6">
+            <label className={`${labelClass} flex items-center gap-2`}>
+                {icon} {title}
+            </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+                {formData[category].map(item => (
+                    <span key={item} className={`px-3 py-1 rounded-full text-sm border flex items-center gap-2 ${colorClass.selected}`}>
+                        {item}
+                        <button type="button" onClick={() => handleTagAction(category, item, 'remove')} className="hover:text-black font-bold">×</button>
+                    </span>
+                ))}
+            </div>
+
+            <div className="relative mb-2">
+                <input
+                    type="text"
+                    value={inputStates[inputStateKey]}
+                    onChange={(e) => setInputStates(prev => ({ ...prev, [inputStateKey]: e.target.value }))}
+                    onKeyDown={(e) => handleInputKey(e, category, inputStateKey)}
+                    placeholder="Введіть свій варіант та натисніть Enter..."
+                    className="text-sm w-full bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 outline-none py-1 dark:text-gray-300"
+                />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                {options.map(opt => (
+                    !formData[category].includes(opt) && (
+                        <button
+                            key={opt}
+                            type="button"
+                            onClick={() => handleTagAction(category, opt, 'add')}
+                            className={`px-3 py-1 rounded-full text-xs border transition-all ${colorClass.unselected}`}
+                        >
+                            + {opt}
+                        </button>
+                    )
+                ))}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
-            <h2 className="text-3xl font-bold mb-6 dark:text-white">Мій Профіль Здоров'я 📋</h2>
+        <div className="max-w-5xl mx-auto px-4 py-8">
+            <h2 className="text-3xl font-bold mb-2 dark:text-white">Налаштування AI-Дієтолога 🤖</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">Заповніть ці дані, щоб штучний інтелект підбирав ідеальні страви саме для вас.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
-                    <div className="mb-8">
-                        <Link
-                            to="/history"
-                            className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl bg-white dark:bg-gray-600 p-2 rounded-lg group-hover:scale-110 transition-transform shadow-sm">📜</span>
-                                <div>
-                                    <h3 className="font-bold text-gray-900 dark:text-white">Історія замовлень</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Перегляньте свої минулі покупки та їх калорійність</p>
-                                </div>
-                            </div>
-                            <span className="text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
-                        </Link>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h3 className="text-xl font-bold mb-4 dark:text-white">📏 Фізичні параметри</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
                                 <label className={labelClass}>Вага (кг)</label>
-                                <input type="number" name="weight" value={formData.weight} onChange={handleChange} className={inputClass} placeholder="70" />
+                                <input type="number" name="weight" value={formData.weight} onChange={handleChange} className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>Зріст (см)</label>
-                                <input type="number" name="height" value={formData.height} onChange={handleChange} className={inputClass} placeholder="170" />
+                                <input type="number" name="height" value={formData.height} onChange={handleChange} className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>Вік</label>
-                                <input type="number" name="age" value={formData.age} onChange={handleChange} className={inputClass} placeholder="25" />
+                                <input type="number" name="age" value={formData.age} onChange={handleChange} className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>Стать</label>
@@ -122,62 +180,111 @@ const ProfilePage = () => {
                                 </select>
                             </div>
                         </div>
-
-                        <div>
-                            <label className={labelClass}>Активність</label>
+                        <div className="mt-4">
+                            <label className={labelClass}>Рівень активності</label>
                             <select name="activity_level" value={formData.activity_level} onChange={handleChange} className={inputClass}>
-                                <option value="sedentary">Сидячий спосіб життя</option>
-                                <option value="light">Легка активність (1-3 рази/тиждень)</option>
-                                <option value="moderate">Помірна (3-5 разів/тиждень)</option>
-                                <option value="active">Висока (6-7 разів/тиждень)</option>
+                                <option value="sedentary">Сидячий (офіс)</option>
+                                <option value="light">Легка (прогулянки)</option>
+                                <option value="moderate">Помірна (тренування 3р/тижд)</option>
+                                <option value="active">Висока (спортзал щодня)</option>
                             </select>
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="block text-sm text-gray-600 dark:text-gray-300 mb-2 font-bold">Алергії (Важливо для безпеки!)</label>
-                            <div className="flex flex-wrap gap-3">
-                                {allergensList.map(allergen => (
-                                    <button
-                                        key={allergen}
-                                        type="button"
-                                        onClick={() => handleAllergyChange(allergen)}
-                                        className={`px-3 py-1 rounded-full text-sm border transition-all ${formData.allergies.includes(allergen)
-                                                ? 'bg-red-100 border-red-500 text-red-700 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700'
-                                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
-                                            }`}
-                                    >
-                                        {allergen}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h3 className="text-xl font-bold mb-6 dark:text-white flex items-center gap-2">
+                            🍽 Смакові вподобання
+                            <span className="text-xs font-normal px-2 py-1 bg-blue-100 text-blue-800 rounded-lg">Важливо для AI</span>
+                        </h3>
 
-                        <button type="submit" disabled={loading} className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-lg hover:opacity-80 mt-4 font-bold transition-opacity">
-                            {loading ? 'Збереження...' : 'Зберегти зміни'}
-                        </button>
-                        {message && <p className="mt-2 text-sm font-medium text-green-600 dark:text-green-400">{message}</p>}
-                    </form>
-                </div>
-                <div className="md:col-span-1">
-                    <div className="bg-blue-50 dark:bg-gray-800 border border-blue-100 dark:border-gray-700 p-6 rounded-2xl sticky top-24 transition-colors">
-                        <h3 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-4">Ваша норма 📊</h3>
+                        <TagSection
+                            title="Алергії та заборони (Суворий фільтр)"
+                            category="allergies"
+                            options={commonAllergies}
+                            inputStateKey="allergy"
+                            icon="⛔️"
+                            colorClass={{
+                                selected: "bg-red-100 border-red-500 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+                                unselected: "bg-gray-50 text-gray-600 hover:bg-red-50 hover:text-red-600 dark:bg-gray-700 dark:text-gray-300"
+                            }}
+                        />
 
-                        <div className="mb-6">
-                            <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Денна норма калорій:</p>
-                            <p className="text-4xl font-bold text-blue-800 dark:text-white">{stats.dailyCalories} <span className="text-lg">ккал</span></p>
-                        </div>
+                        <hr className="my-6 border-gray-200 dark:border-gray-700" />
 
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-sm dark:text-gray-300">
-                                <span>Базовий обмін (BMR):</span>
-                                <span className="font-bold">{stats.bmr}</span>
-                            </div>
-                            <div className="h-px bg-blue-200 dark:bg-gray-600"></div>
-                            <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
-                                Це орієнтовна норма для підтримки ваги. AI буде використовувати це число для підбору порцій.
-                            </p>
+                        <TagSection
+                            title="Не люблю (Уникати)"
+                            category="dislikes"
+                            options={commonDislikes}
+                            inputStateKey="dislike"
+                            icon="👎"
+                            colorClass={{
+                                selected: "bg-orange-100 border-orange-500 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200",
+                                unselected: "bg-gray-50 text-gray-600 hover:bg-orange-50 hover:text-orange-600 dark:bg-gray-700 dark:text-gray-300"
+                            }}
+                        />
+
+                        <hr className="my-6 border-gray-200 dark:border-gray-700" />
+
+                        <TagSection
+                            title="Обожнюю (Пріоритет)"
+                            category="favorites"
+                            options={commonFavorites}
+                            inputStateKey="favorite"
+                            icon="❤️"
+                            colorClass={{
+                                selected: "bg-green-100 border-green-500 text-green-800 dark:bg-green-900/30 dark:text-green-200",
+                                unselected: "bg-gray-50 text-gray-600 hover:bg-green-50 hover:text-green-600 dark:bg-gray-700 dark:text-gray-300"
+                            }}
+                        />
+
+                        <div className="mt-6">
+                            <label className={labelClass}>Додаткові побажання для AI</label>
+                            <textarea
+                                name="bio"
+                                value={formData.bio}
+                                onChange={handleChange}
+                                placeholder="Наприклад: 'Я намагаюся їсти менше солі через тиск' або 'Хочу більше білка на сніданок'."
+                                className={`${inputClass} h-24 resize-none`}
+                            />
                         </div>
                     </div>
+
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/30 disabled:opacity-50"
+                    >
+                        {loading ? 'Збереження налаштувань...' : '💾 Зберегти профіль'}
+                    </button>
+                    {message && <p className="text-center mt-2 font-medium text-green-600 dark:text-green-400">{message}</p>}
+                </div>
+
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl text-white shadow-xl">
+                        <h3 className="text-lg font-bold mb-1 opacity-90">Ваша норма</h3>
+                        <p className="text-5xl font-bold mb-4">{stats.dailyCalories} <span className="text-xl font-normal">ккал</span></p>
+
+                        <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                            <div className="flex justify-between text-sm mb-2">
+                                <span>BMR (База):</span>
+                                <span className="font-bold">{stats.bmr}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span>Активність:</span>
+                                <span className="font-bold">{formData.activity_level.replace('_', ' ')}</span>
+                            </div>
+                        </div>
+                        <p className="text-xs mt-4 opacity-75">Ці дані використовуються AI для розрахунку розміру порцій.</p>
+                    </div>
+                    <Link to="/history" className="block bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 hover:border-blue-500 transition-all group">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white">📜 Історія замовлень</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Аналіз минулих страв</p>
+                            </div>
+                            <span className="text-2xl group-hover:scale-110 transition-transform">👉</span>
+                        </div>
+                    </Link>
                 </div>
             </div>
         </div>
