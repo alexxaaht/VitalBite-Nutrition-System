@@ -8,24 +8,31 @@ export const recommendDish = async (req, res) => {
         if (!req.user || !req.user.id) {
             return res.status(401).json({ error: 'Не авторизовано' });
         }
-
         const userId = req.user.id;
         const userRes = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
         const userProfile = userRes.rows[0];
-
-        if (!userProfile) {
-            return res.status(404).json({ error: 'Користувача не знайдено' });
-        }
-
         const dishesRes = await pool.query('SELECT * FROM dishes');
         const allDishes = dishesRes.rows;
         const recommendation = await getPersonalizedRecommendation(userProfile, allDishes, prompt);
 
         const fullRecommendations = recommendation.map(rec => {
-            const dish = allDishes.find(d => d.id == rec.dish_id);
-            return dish ? { ...dish, ai_reason: rec.reason } : null;
+            const dish = allDishes.find(d => String(d.id) === String(rec.dish_id));
+
+            if (!dish) return null;
+
+            return {
+                ...dish,
+                id: dish.id,
+                name: dish.name,
+                price: Number(dish.price),
+                image_url: dish.image_url,
+                imageUrl: dish.image_url,
+                img: dish.image_url,
+                ai_reason: rec.reason
+            };
         }).filter(item => item !== null);
 
+        console.log(`✅ Знайдено ${fullRecommendations.length} страв для рекомендації.`);
         res.json(fullRecommendations);
 
     } catch (error) {
