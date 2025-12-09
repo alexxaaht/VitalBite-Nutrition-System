@@ -100,7 +100,6 @@ const Header = () => {
                                     )}
                                 </div>
 
-                                {/* MOBILE BURGER */}
                                 <button
                                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                     className="md:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -121,7 +120,6 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* MOBILE MENU DROPDOWN */}
             {isMobileMenuOpen && (
                 <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-xl animate-fadeIn">
                     <div className="px-4 py-4 space-y-3">

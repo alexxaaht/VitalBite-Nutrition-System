@@ -13,7 +13,6 @@ export const createOrder = async (req, res) => {
     try {
         await client.query('BEGIN'); 
 
-        // 1. Створюємо запис про замовлення
         const orderRes = await client.query(
             `INSERT INTO orders (user_id, total_price, total_calories, status) 
        VALUES ($1, $2, $3, 'new') 
@@ -22,7 +21,6 @@ export const createOrder = async (req, res) => {
         );
         const orderId = orderRes.rows[0].id;
 
-        // 2. Додаємо товари (order_items)
         for (const item of items) {
             await client.query(
                 `INSERT INTO order_items (order_id, dish_id, quantity, price_at_moment) 
@@ -82,7 +80,7 @@ export const getMyOrders = async (req, res) => {
     }
 };
 
-// [ADMIN] ВСІ замовлення
+// ADMIN ВСІ замовлення
 export const getAllOrders = async (req, res) => {
     try {
         const query = `
@@ -109,7 +107,7 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
-// [ADMIN] Змінити статус замовлення
+// ADMIN Змінити статус замовлення
 export const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
     const { id } = req.params;

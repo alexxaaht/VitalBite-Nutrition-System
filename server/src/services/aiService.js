@@ -5,10 +5,18 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-export const getPersonalizedRecommendation = async (userProfile, menuItems) => {
+export const getPersonalizedRecommendation = async (userProfile, menuItems, userRequest = '') => {
   try {
-    console.log("📡 Спроба підключення до AI (Gemini)...");
-    return await getGeminiRecommendation(userProfile, menuItems);
+    console.log(`📡 AI Запит: ${userRequest ? `"${userRequest}"` : "Авто-підбір по профілю"}...`);
+
+    const aiResult = await getGeminiRecommendation(userProfile, menuItems, userRequest);
+
+    if (!aiResult || aiResult.length === 0) {
+      throw new Error("AI повернув пусту відповідь");
+    }
+
+    return aiResult;
+
   } catch (error) {
     console.error("⚠️ AI недоступний:", error.message);
 
@@ -16,11 +24,13 @@ export const getPersonalizedRecommendation = async (userProfile, menuItems) => {
       console.log("⏳ Перевищено ліміт запитів до AI. Використовуємо локальний алгоритм.");
     }
 
+
     return getLocalRecommendation(userProfile, menuItems);
   }
 };
 
-const getGeminiRecommendation = async (userProfile, menuItems) => {
+
+const getGeminiRecommendation = async (userProfile, menuItems, userRequest) => {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const menuList = menuItems.map(item =>
@@ -33,25 +43,30 @@ const getGeminiRecommendation = async (userProfile, menuItems) => {
   const bio = userProfile.bio || 'Немає';
 
   const prompt = `
-    Ти досвідчений дієтолог. Підбери страви.
+    Ти досвідчений дієтолог та шеф-кухар.
     
-    ПРОФІЛЬ:
+    ПРОФІЛЬ КЛІЄНТА:
     - Ціль: ${userProfile.dietary_goal}
-    - Алергії (ВИКЛЮЧИТИ): ${allergies}
+    - Алергії (КРИТИЧНО - ВИКЛЮЧИТИ): ${allergies}
     - Не любить: ${dislikes}
     - Любить: ${favorites}
-    - Побажання: ${bio}
+    - Дод. побажання з профілю: ${bio}
+
+    ${userRequest ? `🔴 ЗАПИТ КЛІЄНТА (ПРІОРИТЕТ): "${userRequest}"` : 'Запит: Підбери збалансований раціон на свій розсуд.'}
 
     МЕНЮ:
     ${menuList}
 
     ЗАВДАННЯ:
-    1. Вибери ТОП-3 страви.
-    2. Виключи алергени.
-    3. JSON формат відповіді:
+    1. Суворо виключи страви з алергенами.
+    2. ${userRequest ? 'Знайди страви, що максимально відповідають запиту клієнта.' : 'Вибери ТОП-3 страви під цілі клієнта.'}
+    3. Врахуй вподобання (любить/не любить).
+    4. Надай коротку аргументацію (1 речення українською), посилаючись на запит або профіль.
+
+    ФОРМАТ ВІДПОВІДІ (JSON):
     {
       "recommendations": [
-        { "dish_id": 1, "reason": "Коротке пояснення" }
+        { "dish_id": 1, "reason": "Оскільки ви хотіли..." }
       ]
     }
   `;
@@ -59,8 +74,6 @@ const getGeminiRecommendation = async (userProfile, menuItems) => {
   const result = await model.generateContent(prompt);
   const response = await result.response;
   let text = response.text();
-
-  console.log("🤖 Відповідь Gemini:", text); // Лог для перевірки
 
   text = text.replace(/```json/g, '').replace(/```/g, '').trim();
   const jsonStartIndex = text.indexOf('{');
@@ -93,6 +106,6 @@ const getLocalRecommendation = (userProfile, menuItems) => {
 
   return safeDishes.slice(0, 3).map(dish => ({
     dish_id: dish.id,
-    reason: `⚡ (Алгоритм) Підібрано під мету: ${userProfile.dietary_goal === 'lose_weight' ? 'Низька калорійність' : 'Збалансоване харчування'}`
+    reason: `⚡ (Алгоритм резерву) Підібрано під мету: ${userProfile.dietary_goal === 'lose_weight' ? 'Низька калорійність' : 'Збалансоване харчування'}`
   }));
 };

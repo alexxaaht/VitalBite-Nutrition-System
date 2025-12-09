@@ -1,6 +1,6 @@
 import React from 'react';
 import NutritionBadge from './NutritionBadge';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../../context/CartContext';
 
 const DishCard = ({ dish, onClick }) => {
     const { addToCart } = useCart();

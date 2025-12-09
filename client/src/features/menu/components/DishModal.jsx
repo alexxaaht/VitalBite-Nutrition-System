@@ -1,6 +1,6 @@
 import React from 'react';
 import NutritionBadge from './NutritionBadge';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../../context/CartContext';
 
 const DishModal = ({ dish, onClose }) => {
     const { addToCart } = useCart();
