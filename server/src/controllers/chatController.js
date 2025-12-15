@@ -21,18 +21,18 @@ export const recommendDish = async (req, res) => {
             if (!dish) return null;
 
             return {
-                ...dish,
+                ...dish,                        
                 id: dish.id,
                 name: dish.name,
                 price: Number(dish.price),
+
                 image_url: dish.image_url,
                 imageUrl: dish.image_url,
-                img: dish.image_url,
                 ai_reason: rec.reason
             };
         }).filter(item => item !== null);
 
-        console.log(`✅ Знайдено ${fullRecommendations.length} страв для рекомендації.`);
+        console.log(`✅ Знайдено ${fullRecommendations.length} страв. Відправляю на клієнт.`);
         res.json(fullRecommendations);
 
     } catch (error) {

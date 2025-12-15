@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/api';
 import { Link } from 'react-router-dom';
+import PreferenceSelector from './PreferenceSelector';
 
 const ProfilePage = () => {
     const { user, updateUser } = useAuth();
@@ -15,12 +16,6 @@ const ProfilePage = () => {
         dislikes: [],
         favorites: [],
         bio: ''
-    });
-
-    const [inputStates, setInputStates] = useState({
-        allergy: '',
-        dislike: '',
-        favorite: ''
     });
 
     const [stats, setStats] = useState({ bmr: 0, dailyCalories: 0 });
@@ -62,28 +57,8 @@ const ProfilePage = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleTagAction = (category, item, action) => {
-        setFormData(prev => {
-            let newList;
-            if (action === 'add') {
-                if (prev[category].includes(item)) return prev;
-                newList = [...prev[category], item];
-            } else {
-                newList = prev[category].filter(i => i !== item);
-            }
-            return { ...prev, [category]: newList };
-        });
-    };
-
-    const handleInputKey = (e, category, stateKey) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const value = inputStates[stateKey].trim();
-            if (value) {
-                handleTagAction(category, value, 'add');
-                setInputStates(prev => ({ ...prev, [stateKey]: '' }));
-            }
-        }
+    const handleListUpdate = (category, newItems) => {
+        setFormData(prev => ({ ...prev, [category]: newItems }));
     };
 
     const handleSubmit = async (e) => {
@@ -93,6 +68,7 @@ const ProfilePage = () => {
             const updatedUserResponse = await authService.updateProfile(formData);
             updateUser(updatedUserResponse);
             setMessage('✅ Профіль успішно оновлено!');
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
             console.error(error);
             setMessage('❌ Помилка збереження');
@@ -107,48 +83,6 @@ const ProfilePage = () => {
 
     const inputClass = "w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 transition-colors";
     const labelClass = "block text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium";
-
-    const TagSection = ({ title, category, options, colorClass, inputStateKey, icon }) => (
-        <div className="mb-6">
-            <label className={`${labelClass} flex items-center gap-2`}>
-                {icon} {title}
-            </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-                {formData[category].map(item => (
-                    <span key={item} className={`px-3 py-1 rounded-full text-sm border flex items-center gap-2 ${colorClass.selected}`}>
-                        {item}
-                        <button type="button" onClick={() => handleTagAction(category, item, 'remove')} className="hover:text-black font-bold">×</button>
-                    </span>
-                ))}
-            </div>
-
-            <div className="relative mb-2">
-                <input
-                    type="text"
-                    value={inputStates[inputStateKey]}
-                    onChange={(e) => setInputStates(prev => ({ ...prev, [inputStateKey]: e.target.value }))}
-                    onKeyDown={(e) => handleInputKey(e, category, inputStateKey)}
-                    placeholder="Введіть свій варіант та натисніть Enter..."
-                    className="text-sm w-full bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 outline-none py-1 dark:text-gray-300"
-                />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-                {options.map(opt => (
-                    !formData[category].includes(opt) && (
-                        <button
-                            key={opt}
-                            type="button"
-                            onClick={() => handleTagAction(category, opt, 'add')}
-                            className={`px-3 py-1 rounded-full text-xs border transition-all ${colorClass.unselected}`}
-                        >
-                            + {opt}
-                        </button>
-                    )
-                ))}
-            </div>
-        </div>
-    );
 
     return (
         <div className="max-w-5xl mx-auto px-4 py-8">
@@ -197,11 +131,11 @@ const ProfilePage = () => {
                             <span className="text-xs font-normal px-2 py-1 bg-blue-100 text-blue-800 rounded-lg">Важливо для AI</span>
                         </h3>
 
-                        <TagSection
+                        <PreferenceSelector
                             title="Алергії та заборони (Суворий фільтр)"
-                            category="allergies"
+                            items={formData.allergies}
                             options={commonAllergies}
-                            inputStateKey="allergy"
+                            onChange={(newItems) => handleListUpdate('allergies', newItems)}
                             icon="⛔️"
                             colorClass={{
                                 selected: "bg-red-100 border-red-500 text-red-700 dark:bg-red-900/40 dark:text-red-300",
@@ -211,11 +145,11 @@ const ProfilePage = () => {
 
                         <hr className="my-6 border-gray-200 dark:border-gray-700" />
 
-                        <TagSection
+                        <PreferenceSelector
                             title="Не люблю (Уникати)"
-                            category="dislikes"
+                            items={formData.dislikes}
                             options={commonDislikes}
-                            inputStateKey="dislike"
+                            onChange={(newItems) => handleListUpdate('dislikes', newItems)}
                             icon="👎"
                             colorClass={{
                                 selected: "bg-orange-100 border-orange-500 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200",
@@ -225,11 +159,11 @@ const ProfilePage = () => {
 
                         <hr className="my-6 border-gray-200 dark:border-gray-700" />
 
-                        <TagSection
+                        <PreferenceSelector
                             title="Обожнюю (Пріоритет)"
-                            category="favorites"
+                            items={formData.favorites}
                             options={commonFavorites}
-                            inputStateKey="favorite"
+                            onChange={(newItems) => handleListUpdate('favorites', newItems)}
                             icon="❤️"
                             colorClass={{
                                 selected: "bg-green-100 border-green-500 text-green-800 dark:bg-green-900/30 dark:text-green-200",

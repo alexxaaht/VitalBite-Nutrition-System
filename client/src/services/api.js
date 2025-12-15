@@ -52,6 +52,10 @@ export const orderService = {
   updateStatus: async (orderId, status) => {
     const response = await api.put(`/orders/${orderId}/status`, { status });
     return response.data;
+  },
+  deleteOrder: async (id) => {
+    const response = await api.delete(`/orders/${id}`);
+    return response.data;
   }
 };
 
@@ -88,5 +92,3 @@ export const authService = {
 };
 
 export default api;
-
-

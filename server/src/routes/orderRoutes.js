@@ -1,5 +1,5 @@
 import express from 'express';
-import { createOrder, getMyOrders, getAllOrders, updateOrderStatus } from '../controllers/orderController.js';
+import { createOrder, getMyOrders, getAllOrders, updateOrderStatus, deleteOrder } from '../controllers/orderController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -10,5 +10,6 @@ router.get('/', protect, getMyOrders);
 // Адмінські маршрути
 router.get('/all', protect, admin, getAllOrders);
 router.put('/:id/status', protect, admin, updateOrderStatus);
+router.delete('/:id', protect, admin, deleteOrder);
 
 export default router;

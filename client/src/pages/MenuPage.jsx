@@ -18,6 +18,8 @@ const MenuPage = () => {
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     const handleAiRecommendation = (data) => {
+        console.log("🔍 Отримано рекомендації:", data);
+
         setAiRecommendations(data);
         if (window.innerWidth < 768) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -69,12 +71,38 @@ const MenuPage = () => {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
                 {aiRecommendations && (
-                    <div className="mb-12 bg-indigo-50 dark:bg-indigo-900/20 p-8 rounded-3xl relative">
-                        <button onClick={resetAi} className="absolute top-4 right-4 text-gray-400 hover:text-red-500">✕</button>
-                        <h2 className="text-2xl font-bold text-indigo-900 dark:text-indigo-200 mb-6">🤖 Ваша персональна підбірка</h2>
+                    <div className="mb-12 bg-indigo-50 dark:bg-indigo-900/20 p-8 rounded-3xl relative border border-indigo-100 dark:border-indigo-800">
+                        <button
+                            onClick={resetAi}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-white dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center shadow-sm"
+                        >
+                            ✕
+                        </button>
+                        <h2 className="text-2xl font-bold text-indigo-900 dark:text-indigo-200 mb-6 flex items-center">
+                            🤖 Ваша персональна підбірка
+                        </h2>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {aiRecommendations.map((dish) => (
-                                <DishCard key={dish.id} dish={dish} onClick={setSelectedDish} />
+                                <div key={dish.id} className="flex flex-col h-full group">
+                                    <div className="flex-grow">
+                                        <DishCard
+                                            dish={dish}
+                                            onClick={setSelectedDish}
+                                        />
+                                    </div>
+
+                                    {dish.ai_reason && (
+                                        <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-indigo-100 dark:border-indigo-900 shadow-sm relative transform transition-all duration-300 hover:scale-[1.02]">
+                                            <div className="absolute -top-2 left-8 w-4 h-4 bg-white dark:bg-gray-800 border-t border-l border-indigo-100 dark:border-indigo-900 transform rotate-45"></div>
+
+                                            <p className="text-sm text-indigo-800 dark:text-indigo-300 leading-relaxed font-medium">
+                                                <span className="text-xl mr-2 align-middle">💡</span>
+                                                {dish.ai_reason}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -101,7 +129,7 @@ const MenuPage = () => {
 
             <button
                 onClick={() => setIsChatOpen(!isChatOpen)}
-                className="fixed bottom-6 right-6 w-16 h-16 bg-indigo-600 rounded-full shadow-2xl flex items-center justify-center z-50 text-white text-3xl"
+                className="fixed bottom-6 right-6 w-16 h-16 bg-indigo-600 rounded-full shadow-2xl flex items-center justify-center z-50 text-white text-3xl hover:bg-indigo-700 transition-transform hover:scale-110 active:scale-95"
             >
                 {isChatOpen ? '✕' : '🤖'}
             </button>

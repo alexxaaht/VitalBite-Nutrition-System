@@ -2,7 +2,7 @@ import pool from '../config/db.js';
 
 export const createOrder = async (req, res) => {
     const { items, total_price, total_calories } = req.body;
-    const userId = req.user.id; 
+    const userId = req.user.id;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ error: 'Кошик порожній' });
@@ -11,7 +11,7 @@ export const createOrder = async (req, res) => {
     const client = await pool.connect();
 
     try {
-        await client.query('BEGIN'); 
+        await client.query('BEGIN');
 
         const orderRes = await client.query(
             `INSERT INTO orders (user_id, total_price, total_calories, status) 
@@ -29,12 +29,12 @@ export const createOrder = async (req, res) => {
             );
         }
 
-        await client.query('COMMIT'); 
+        await client.query('COMMIT');
 
         res.status(201).json({ message: 'Замовлення створено', orderId });
 
     } catch (err) {
-        await client.query('ROLLBACK'); 
+        await client.query('ROLLBACK');
         console.error(err.message);
         res.status(500).json({ error: 'Помилка при створенні замовлення' });
     } finally {
@@ -121,5 +121,21 @@ export const updateOrderStatus = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Server Error');
+    }
+};
+
+export const deleteOrder = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM orders WHERE id = $1 RETURNING *', [id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Замовлення не знайдено' });
+        }
+
+        res.json({ message: 'Замовлення успішно видалено', id });
+    } catch (error) {
+        console.error("Помилка видалення замовлення:", error);
+        res.status(500).json({ error: 'Server error' });
     }
 };
