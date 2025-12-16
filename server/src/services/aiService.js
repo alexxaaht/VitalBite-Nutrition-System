@@ -109,3 +109,4 @@ const getLocalRecommendation = (userProfile, menuItems) => {
     reason: `⚡ (Алгоритм резерву) Підібрано під мету: ${userProfile.dietary_goal === 'lose_weight' ? 'Низька калорійність' : 'Збалансоване харчування'}`
   }));
 };
+
